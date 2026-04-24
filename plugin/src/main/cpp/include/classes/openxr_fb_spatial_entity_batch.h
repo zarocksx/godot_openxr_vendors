@@ -46,7 +46,7 @@ protected:
 	static void _bind_methods();
 
 	static void _on_save_to_storage(XrResult p_result, XrSpaceStorageLocationFB p_location, void *p_userdata);
-	static void _on_share_with_users(XrResult p_result, void *p_userdata);
+	static void _on_share_completed(XrResult p_result, void *p_userdata);
 
 	String _to_string() const;
 
@@ -55,6 +55,7 @@ public:
 
 	void save_to_storage(OpenXRFbSpatialEntity::StorageLocation p_location);
 	void share_with_users(const TypedArray<OpenXRFbSpatialEntityUser> &p_users);
+	void share_with_groups(const Array &p_group_ids);
 
 	static Ref<OpenXRFbSpatialEntityBatch> create_batch(const TypedArray<OpenXRFbSpatialEntity> &p_entities);
 

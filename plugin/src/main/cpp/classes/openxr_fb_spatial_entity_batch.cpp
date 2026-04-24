@@ -33,6 +33,7 @@
 
 #include "extensions/openxr_fb_spatial_entity_sharing_extension.h"
 #include "extensions/openxr_fb_spatial_entity_storage_batch_extension.h"
+#include "extensions/openxr_meta_spatial_entity_sharing_extension.h"
 
 #include "classes/openxr_fb_spatial_entity_user.h"
 
@@ -43,6 +44,7 @@ void OpenXRFbSpatialEntityBatch::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("save_to_storage", "location"), &OpenXRFbSpatialEntityBatch::save_to_storage);
 	ClassDB::bind_method(D_METHOD("share_with_users", "users"), &OpenXRFbSpatialEntityBatch::share_with_users);
+	ClassDB::bind_method(D_METHOD("share_with_groups", "group_ids"), &OpenXRFbSpatialEntityBatch::share_with_groups);
 
 	ClassDB::bind_static_method("OpenXRFbSpatialEntityBatch", D_METHOD("create_batch", "entities"), &OpenXRFbSpatialEntityBatch::create_batch);
 
@@ -104,10 +106,33 @@ void OpenXRFbSpatialEntityBatch::share_with_users(const TypedArray<OpenXRFbSpati
 	};
 
 	Ref<OpenXRFbSpatialEntityBatch> *userdata = memnew(Ref<OpenXRFbSpatialEntityBatch>(this));
-	OpenXRFbSpatialEntitySharingExtension::get_singleton()->share_spaces(&info, OpenXRFbSpatialEntityBatch::_on_share_with_users, userdata);
+	OpenXRFbSpatialEntitySharingExtension::get_singleton()->share_spaces(&info, OpenXRFbSpatialEntityBatch::_on_share_completed, userdata);
 }
 
-void OpenXRFbSpatialEntityBatch::_on_share_with_users(XrResult p_result, void *p_userdata) {
+void OpenXRFbSpatialEntityBatch::share_with_groups(const Array &p_group_ids) {
+	ERR_FAIL_COND_MSG(spaces.is_empty(), "This spatial entity batch contains no shareable spaces.");
+	ERR_FAIL_COND_MSG(spaces.size() > XR_MAX_SPACES_PER_SHARE_REQUEST_META, vformat("At most %d spaces can be shared in a single request.", XR_MAX_SPACES_PER_SHARE_REQUEST_META));
+	ERR_FAIL_COND_MSG(p_group_ids.is_empty(), "At least one group UUID is required.");
+	ERR_FAIL_COND_MSG(p_group_ids.size() > 16, "At most 16 group UUIDs can be shared in a single request.");
+
+	LocalVector<XrUuid> groups;
+	groups.resize(p_group_ids.size());
+	for (int i = 0; i < p_group_ids.size(); i++) {
+		const String group_id = String(p_group_ids[i]);
+		ERR_FAIL_COND_MSG(!OpenXRUtilities::string_to_uuid(group_id, groups[i]), vformat("Invalid group UUID: %s", group_id));
+	}
+
+	Ref<OpenXRFbSpatialEntityBatch> *userdata = memnew(Ref<OpenXRFbSpatialEntityBatch>(this));
+	OpenXRMetaSpatialEntitySharingExtension::get_singleton()->share_spaces_with_groups(
+			const_cast<XrSpace *>(spaces.ptr()),
+			static_cast<uint32_t>(spaces.size()),
+			groups.ptr(),
+			static_cast<uint32_t>(groups.size()),
+			OpenXRFbSpatialEntityBatch::_on_share_completed,
+			userdata);
+}
+
+void OpenXRFbSpatialEntityBatch::_on_share_completed(XrResult p_result, void *p_userdata) {
 	Ref<OpenXRFbSpatialEntityBatch> *userdata = (Ref<OpenXRFbSpatialEntityBatch> *)p_userdata;
 	(*userdata)->emit_signal("openxr_fb_spatial_entity_batch_shared", XR_SUCCEEDED(p_result));
 	memdelete(userdata);

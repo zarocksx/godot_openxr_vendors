@@ -167,6 +167,18 @@
 				Note: [OpenXRFbSpatialEntityBatch] can be used to share multiple spatial entities in a single operation.
 			</description>
 		</method>
+		<method name="share_with_groups">
+			<return type="void" />
+			<param index="0" name="group_ids" type="Array" />
+			<description>
+				Shares this spatial entity with the given application-defined group UUID strings using Meta's group sharing extensions.
+				The component [constant COMPONENT_TYPE_SHARABLE] must be enabled, which can be checked by calling [method is_component_enabled], or set by calling [method set_component_enabled].
+				The spatial entity must have already been saved to the cloud, using [method save_to_storage].
+				You can check runtime support ahead of time with [method OpenXRMetaSpatialEntitySharingExtension.is_spatial_entity_group_sharing_supported].
+				This is an asynchronous operation - the [signal openxr_fb_spatial_entity_shared] signal will be emitted when completed with an argument indicating if it was successful or not.
+				Note: [OpenXRFbSpatialEntityBatch] can be used to share multiple spatial entities in a single operation.
+			</description>
+		</method>
 		<method name="track">
 			<return type="void" />
 			<description>
@@ -224,7 +236,7 @@
 		<signal name="openxr_fb_spatial_entity_shared">
 			<param index="0" name="succeeded" type="bool" />
 			<description>
-				Emitted when the operation to share a spatial entity is completed. See [method share_with_users].
+				Emitted when the operation to share a spatial entity is completed. See [method share_with_users] and [method share_with_groups].
 			</description>
 		</signal>
 	</signals>
@@ -242,7 +254,7 @@
 			The spatial entity can be stored. See [method save_to_storage] and [method erase_from_storage].
 		</constant>
 		<constant name="COMPONENT_TYPE_SHARABLE" value="2" enum="ComponentType">
-			The spatial entity can be shared with other users. See [method share_with_users].
+			The spatial entity can be shared with other users or groups. See [method share_with_users] and [method share_with_groups].
 		</constant>
 		<constant name="COMPONENT_TYPE_BOUNDED_2D" value="3" enum="ComponentType">
 			The spatial entity has 2D boundary data. See [method get_bounding_box_2d] and [method get_boundary_2d].

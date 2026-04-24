@@ -1,0 +1,109 @@
+/**************************************************************************/
+/*  openxr_meta_spatial_entity_sharing_extension.h                        */
+/**************************************************************************/
+/*                       This file is part of:                            */
+/*                              GODOT XR                                  */
+/*                      https://godotengine.org                           */
+/**************************************************************************/
+/* Copyright (c) 2022-present Godot XR contributors (see CONTRIBUTORS.md) */
+/*                                                                        */
+/* Permission is hereby granted, free of charge, to any person obtaining  */
+/* a copy of this software and associated documentation files (the        */
+/* "Software"), to deal in the Software without restriction, including    */
+/* without limitation the rights to use, copy, modify, merge, publish,    */
+/* distribute, sublicense, and/or sell copies of the Software, and to     */
+/* permit persons to whom the Software is furnished to do so, subject to  */
+/* the following conditions:                                              */
+/*                                                                        */
+/* The above copyright notice and this permission notice shall be         */
+/* included in all copies or substantial portions of the Software.        */
+/*                                                                        */
+/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
+/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
+/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
+/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
+/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
+/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
+/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
+/**************************************************************************/
+
+#pragma once
+
+#include <openxr/openxr.h>
+#include <godot_cpp/classes/open_xr_extension_wrapper.hpp>
+#include <godot_cpp/templates/hash_map.hpp>
+
+#include "util.h"
+
+using namespace godot;
+
+class OpenXRMetaSpatialEntitySharingExtension : public OpenXRExtensionWrapper {
+	GDCLASS(OpenXRMetaSpatialEntitySharingExtension, OpenXRExtensionWrapper);
+
+public:
+	uint64_t _set_system_properties_and_get_next_pointer(void *p_next_pointer) override;
+	Dictionary _get_requested_extensions(uint64_t p_xr_version) override;
+
+	void _on_instance_created(uint64_t instance) override;
+	void _on_instance_destroyed() override;
+
+	bool is_spatial_entity_sharing_supported() const;
+	bool is_spatial_entity_group_sharing_supported() const;
+
+	typedef void (*ShareSpacesCompleteCallback)(XrResult p_result, void *p_userdata);
+
+	bool share_spaces(const XrShareSpacesInfoMETA *p_info, ShareSpacesCompleteCallback p_callback, void *p_userdata);
+	bool share_spaces_with_groups(XrSpace *p_spaces, uint32_t p_space_count, XrUuid *p_groups, uint32_t p_group_count, ShareSpacesCompleteCallback p_callback, void *p_userdata);
+
+	virtual bool _on_event_polled(const void *event) override;
+
+	static OpenXRMetaSpatialEntitySharingExtension *get_singleton();
+
+	OpenXRMetaSpatialEntitySharingExtension();
+	~OpenXRMetaSpatialEntitySharingExtension();
+
+protected:
+	static void _bind_methods();
+
+private:
+	EXT_PROTO_XRRESULT_FUNC3(xrShareSpacesMETA,
+			(XrSession), session,
+			(const XrShareSpacesInfoMETA *), info,
+			(XrAsyncRequestIdFB *), requestId);
+
+	bool initialize_meta_spatial_entity_sharing_extension(const XrInstance &p_instance);
+	void on_share_spaces_complete(const XrEventDataShareSpacesCompleteMETA *p_event);
+	void cleanup();
+
+	HashMap<String, bool *> request_extensions;
+
+	struct RequestInfo {
+		ShareSpacesCompleteCallback callback = nullptr;
+		void *userdata = nullptr;
+
+		RequestInfo() {}
+
+		RequestInfo(ShareSpacesCompleteCallback p_callback, void *p_userdata) {
+			callback = p_callback;
+			userdata = p_userdata;
+		}
+	};
+
+	HashMap<XrAsyncRequestIdFB, RequestInfo> requests;
+
+	XrSystemSpatialEntitySharingPropertiesMETA system_sharing_properties = {
+		XR_TYPE_SYSTEM_SPATIAL_ENTITY_SHARING_PROPERTIES_META,
+		nullptr,
+		XR_FALSE,
+	};
+	XrSystemSpatialEntityGroupSharingPropertiesMETA system_group_sharing_properties = {
+		XR_TYPE_SYSTEM_SPATIAL_ENTITY_GROUP_SHARING_PROPERTIES_META,
+		nullptr,
+		XR_FALSE,
+	};
+
+	static OpenXRMetaSpatialEntitySharingExtension *singleton;
+
+	bool meta_spatial_entity_sharing_ext = false;
+	bool meta_spatial_entity_group_sharing_ext = false;
+};

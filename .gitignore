@@ -12,6 +12,9 @@ local.properties
 # Visual Studio Code project files
 .vscode
 
+# Visual Studio workspace files
+.vs/
+
 # Binaries
 *.o
 *.os

@@ -45,6 +45,7 @@
 #include "extensions/openxr_fb_spatial_entity_extension.h"
 #include "extensions/openxr_fb_spatial_entity_sharing_extension.h"
 #include "extensions/openxr_fb_spatial_entity_storage_extension.h"
+#include "extensions/openxr_meta_spatial_entity_sharing_extension.h"
 #include "extensions/openxr_meta_spatial_entity_mesh_extension.h"
 
 #include "classes/openxr_fb_spatial_entity_user.h"
@@ -81,6 +82,7 @@ void OpenXRFbSpatialEntity::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("save_to_storage", "location"), &OpenXRFbSpatialEntity::save_to_storage, DEFVAL(STORAGE_LOCAL));
 	ClassDB::bind_method(D_METHOD("erase_from_storage", "location"), &OpenXRFbSpatialEntity::erase_from_storage, DEFVAL(STORAGE_LOCAL));
 	ClassDB::bind_method(D_METHOD("share_with_users", "users"), &OpenXRFbSpatialEntity::share_with_users);
+	ClassDB::bind_method(D_METHOD("share_with_groups", "group_ids"), &OpenXRFbSpatialEntity::share_with_groups);
 	ClassDB::bind_method(D_METHOD("destroy"), &OpenXRFbSpatialEntity::destroy);
 
 	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "uuid", PROPERTY_HINT_NONE, ""), "", "get_uuid");
@@ -468,10 +470,34 @@ void OpenXRFbSpatialEntity::share_with_users(const TypedArray<OpenXRFbSpatialEnt
 	};
 
 	Ref<OpenXRFbSpatialEntity> *userdata = memnew(Ref<OpenXRFbSpatialEntity>(this));
-	OpenXRFbSpatialEntitySharingExtension::get_singleton()->share_spaces(&info, OpenXRFbSpatialEntity::_on_share_with_users, userdata);
+	OpenXRFbSpatialEntitySharingExtension::get_singleton()->share_spaces(&info, OpenXRFbSpatialEntity::_on_share_completed, userdata);
 }
 
-void OpenXRFbSpatialEntity::_on_share_with_users(XrResult p_result, void *p_userdata) {
+void OpenXRFbSpatialEntity::share_with_groups(const Array &p_group_ids) {
+	ERR_FAIL_COND_MSG(space == XR_NULL_HANDLE, "Underlying spatial entity doesn't exist (yet) or has been destroyed.");
+	ERR_FAIL_COND_MSG(p_group_ids.is_empty(), "At least one group UUID is required.");
+	ERR_FAIL_COND_MSG(p_group_ids.size() > 16, "At most 16 group UUIDs can be shared in a single request.");
+
+	LocalVector<XrUuid> groups;
+	groups.resize(p_group_ids.size());
+	for (int i = 0; i < p_group_ids.size(); i++) {
+		const String group_id = String(p_group_ids[i]);
+		ERR_FAIL_COND_MSG(!OpenXRUtilities::string_to_uuid(group_id, groups[i]), vformat("Invalid group UUID: %s", group_id));
+	}
+
+	XrSpace spaces[1] = { space };
+
+	Ref<OpenXRFbSpatialEntity> *userdata = memnew(Ref<OpenXRFbSpatialEntity>(this));
+	OpenXRMetaSpatialEntitySharingExtension::get_singleton()->share_spaces_with_groups(
+			spaces,
+			1,
+			groups.ptr(),
+			static_cast<uint32_t>(groups.size()),
+			OpenXRFbSpatialEntity::_on_share_completed,
+			userdata);
+}
+
+void OpenXRFbSpatialEntity::_on_share_completed(XrResult p_result, void *p_userdata) {
 	Ref<OpenXRFbSpatialEntity> *userdata = (Ref<OpenXRFbSpatialEntity> *)p_userdata;
 	(*userdata)->emit_signal("openxr_fb_spatial_entity_shared", XR_SUCCEEDED(p_result));
 	memdelete(userdata);

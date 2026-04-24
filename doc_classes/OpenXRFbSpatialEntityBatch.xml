@@ -32,6 +32,15 @@
 				This is an asynchronous operation - the [signal openxr_fb_spatial_entity_batch_shared] signal will be emitted when completed with an argument indicating if it was successful or not.
 			</description>
 		</method>
+		<method name="share_with_groups">
+			<return type="void" />
+			<param index="0" name="group_ids" type="Array" />
+			<description>
+				Shares all the spatial entities in this batch with the given application-defined group UUID strings in a single operation.
+				You can check runtime support ahead of time with [method OpenXRMetaSpatialEntitySharingExtension.is_spatial_entity_group_sharing_supported].
+				This is an asynchronous operation - the [signal openxr_fb_spatial_entity_batch_shared] signal will be emitted when completed with an argument indicating if it was successful or not.
+			</description>
+		</method>
 	</methods>
 	<members>
 		<member name="entities" type="OpenXRFbSpatialEntity[]" setter="" getter="get_entities" default="[]">
@@ -49,7 +58,7 @@
 		<signal name="openxr_fb_spatial_entity_batch_shared">
 			<param index="0" name="succeeded" type="bool" />
 			<description>
-				Emitted when the share operation has completed. See [method share_with_users].
+				Emitted when the share operation has completed. See [method share_with_users] and [method share_with_groups].
 			</description>
 		</signal>
 	</signals>
